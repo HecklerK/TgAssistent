@@ -28,9 +28,9 @@ async def isNotFakeScam(client: Client, message: Message):
 async def handle_message(client: Client, message: Message):
     text = message.text.lower()
 
-    if text == '\U00002754' & isNotFakeScam(client, message):
+    if (text == '\U00002754') & await isNotFakeScam(client, message):
         await client.send_message(chat_id=message.chat.id, text=config('ABOUT_ME'))
-    elif re.search(r'расскажи о себе|расскажешь о себе', text) & (not message.from_user.is_self) & isNotFakeScam(client, message):
+    elif (re.search(r'расскажи о себе|расскажешь о себе', text) != None) & (not message.from_user.is_self) & await isNotFakeScam(client, message):
         await client.send_message(chat_id=message.chat.id, text=('Автоматическое сообщение: ' + config('ABOUT_ME')))
 
 

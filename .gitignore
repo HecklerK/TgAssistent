@@ -1,4 +1,5 @@
 .env
 .venv
 *.session
+*.session-journal
 logs.txt
