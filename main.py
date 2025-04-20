@@ -78,7 +78,7 @@ async def handle_message(client: Client, message: Message):
         except Exception as e:
             logging.error(f"**Ошибка при получении информации о пользователе:**\n{e}")
             
-    if (text == "песня из мне нравится" | text == "музыка из мне нравится") & isMeOrContact :
+    if (text == "песня из мне нравится" or text == "музыка из мне нравится") & isMeOrContact :
         if ym_client:
             try:
                 playlist_tracks = await ym_client.users_likes_tracks()
