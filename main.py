@@ -4,8 +4,10 @@ import re
 import random
 from decouple import config
 from pyrogram  import Client, filters, enums
-from pyrogram.types import Message, Chat
+from pyrogram.types import Message
 from yandex_music import ClientAsync as YandexMusicClient
+from g4f.client import AsyncClient as AiClient
+from g4f.Provider import PollinationsAI
 
 logging.basicConfig(level=logging.INFO, filename="logs.txt", filemode="a", format="%(asctime)s %(levelname)s %(message)s")
 logging.handlers.RotatingFileHandler("logs.txt", maxBytes=2048, backupCount=2)
@@ -23,6 +25,12 @@ try:
 except Exception as e:
     logging.error(f"Ошибка при инициализации Yandex Music API: {e}")
     ym_client = None
+
+try:
+    ai_client = AiClient(provider=PollinationsAI, media_provider=PollinationsAI)
+except Exception as e:
+    logging.error(f"Ошибка при инициализации Ai клиента: {e}")
+    ai_client = None
 
 async def isNotFakeScam(client: Client, message: Message):
     user = message.from_user
@@ -47,6 +55,10 @@ async def handle_message(client: Client, message: Message):
     
     if message.from_user.is_self & ("\U00002754" in text):
         user_id = text.split("\U00002754")[1].strip()
+
+        if user_id.count < 2:
+            return 
+
         try:
             user = await client.get_users(user_id)
 
@@ -76,7 +88,7 @@ async def handle_message(client: Client, message: Message):
                     parse_mode=enums.ParseMode.MARKDOWN, quote=True)
             
         except Exception as e:
-            logging.error(f"**Ошибка при получении информации о пользователе:**\n{e}")
+            logging.error(f"Ошибка при получении информации о пользователе: {e}")
             
     if (text == "песня из мне нравится" or text == "музыка из мне нравится") & isMeOrContact :
         if ym_client:
@@ -104,10 +116,61 @@ async def handle_message(client: Client, message: Message):
                     quote=True
                 )
             except Exception as e:
-                logging.error(f"**Ошибка при получении песни из Yandex Music:**\n{e}")
+                logging.error(f"Ошибка при получении песни из Yandex Music: {e}")
         else:
-            logging.error(f'*Yandex Music API не инициализирован.*')
-    
+            logging.error(f'Yandex Music API не инициализирован.')
+
+    if 'ии:' in text and isMeOrContact:
+
+        if not ai_client:
+            return
+
+        prompt = text.split('ии:')[1].strip()
+
+        if len(prompt) < 2:
+            return
+        
+        try:
+            response = await ai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            )
+
+            await message.reply(text=response.choices[0].message.content, parse_mode=enums.ParseMode.MARKDOWN, quote=True)
+        except Exception as e:
+            logging.error(f"Ошибка при получении запроса от ИИ: {e}")
+
+    if 'нарисуй:' in text and isMeOrContact:
+
+        if not ai_client:
+            return
+
+        prompt = text.split('нарисуй:')[1].strip()
+
+        if len(prompt) < 2:
+            return
+        
+        try:
+            created_message = await client.send_message(chat_id=message.chat.id, text="Создаю", reply_to_message_id=message.id)
+            response = await ai_client.images.async_generate(
+                prompt=prompt,
+                model="flux-schnell",
+                response_format="url",
+            )
+
+            url = response.data[0].url
+
+            await client.send_photo(message.chat.id, url, reply_to_message_id=message.id)
+        except Exception as e:
+            logging.error(f"Ошибка при получении изображения от ИИ: {e}")
+        finally:
+            if created_message != None:
+                await client.delete_messages(message.chat.id, created_message.id)
 
 
 bot.run()
