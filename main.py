@@ -41,19 +41,19 @@ async def isNotFakeScam(client: Client, message: Message):
     return True
 
 
-@bot.on_message(filters.text & (filters.private | filters.chat("me")))
+@bot.on_message(filters.text and (filters.private or filters.chat("me") or filters.user("me")))
 async def handle_message(client: Client, message: Message):
-    text = message.text.lower()
-    isMeOrContact = message.from_user.is_self | message.from_user.is_contact
+    text = message.text.lower() if message.text is not None else ''
+    isMeOrContact = message.from_user.is_self or message.from_user.is_contact
 
-    if (text == '\U00002754') & await isNotFakeScam(client, message):
+    if (text == '\U00002754') and await isNotFakeScam(client, message):
         answer = await message.reply(text=config('ABOUT_ME'), quote=True)
         await client.pin_chat_message(answer.chat.id, answer.id)
-    elif (re.search(r'расскажи о себе|расскажешь о себе', text) != None) & (not message.from_user.is_self) & await isNotFakeScam(client, message):
+    elif (re.search(r'расскажи о себе|расскажешь о себе', text) != None) and (not message.from_user.is_self) and await isNotFakeScam(client, message):
         answer = await message.reply(chat_id=message.chat.id, text=f'**Автоматическое сообщение:**\n{config("ABOUT_ME")}', parse_mode=enums.ParseMode.MARKDOWN, quote=True)
         await client.pin_chat_message(answer.chat.id, answer.id)
     
-    if message.from_user.is_self & ("\U00002754" in text):
+    if message.from_user.is_self and ("\U00002754" in text):
         user_id = text.split("\U00002754")[1].strip()
 
         if user_id.count < 2:
@@ -90,7 +90,7 @@ async def handle_message(client: Client, message: Message):
         except Exception as e:
             logging.error(f"Ошибка при получении информации о пользователе: {e}")
             
-    if (text == "песня из мне нравится" or text == "музыка из мне нравится") & isMeOrContact :
+    if (text == "песня из мне нравится" or text == "музыка из мне нравится") and isMeOrContact:
         if ym_client:
             try:
                 playlist_tracks = await ym_client.users_likes_tracks()
@@ -156,7 +156,7 @@ async def handle_message(client: Client, message: Message):
             return
         
         try:
-            created_message = await client.send_message(chat_id=message.chat.id, text="Создаю", reply_to_message_id=message.id)
+            created_message = await client.send_message(chat_id=message.chat.id, text="Создаю", reply_to_message_id=message.id, disable_notification=True)
             response = await ai_client.images.async_generate(
                 prompt=prompt,
                 model="flux-schnell",
